@@ -16,7 +16,7 @@ namespace EOSNewYork.EOSCore
     //This interface must be implemented by any class wishing to be treated as a row of an EOS table. 
     public interface IEOSTable
     {
-        EOSTableMetadata getMetadata();
+        EOSTableMetadata GetMetaData();
     }
 
     //Defines the properties of a table. Any table implementing IEOSTable will need to return on of these in order to provide details of where table exists on the EOS chain. 
@@ -27,17 +27,27 @@ namespace EOSNewYork.EOSCore
         public string scope;
         public string table;
         public string key_type = string.Empty;
+
     }
 
 
     public interface IEOAPI
     {
-        EOSAPIMetadata getMetadata();
+        EOSAPIMetadata GetMetaData();
     }
 
     public class EOSAPIMetadata
     {
         public string uri;
     }
+
+    //////////// Interface used for StringArray /////////////
+
+    public interface IEOStringArray
+    {
+        void SetStringArray(List<String> array);
+    }
+
+
 }
 
