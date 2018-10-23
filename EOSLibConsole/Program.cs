@@ -15,6 +15,7 @@ using EOSNewYork.EOSCore.Utilities;
 using Action = EOSNewYork.EOSCore.Params.Action;
 using Newtonsoft.Json;
 using Cryptography.ECDSA;
+using System.Text.RegularExpressions;
 
 namespace EOSLibConsole
 {
@@ -32,16 +33,17 @@ namespace EOSLibConsole
             //EOSInfo.GetAccountBalance();
             //EOSInfo.GetNewKeyPair();
             //EOSInfo.GetAbiJsonToBin();
-            //EOSInfo.GetBlock();
+            EOSInfo.GetBlock();
             //EOSInfo.GetAbi();
             //EOSInfo.GetCode();
             //EOSInfo.GetRawCodeAndAbi();
             //EOSInfo.GetActions();
             //EOSInfo.GetTransaction();
-            EOSInfo.TestTransaction();
+            //EOSInfo.TestTransaction();
+            //EOSInfo.GetTableRows();
 
             Console.WriteLine("Done");
-            //Console.ReadLine();
+            Console.ReadLine();
 
         }
     }
@@ -49,7 +51,8 @@ namespace EOSLibConsole
     public static class EOSInfo
     {
         static Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        static string host = "http://dev.cryptolions.io:18888";
+        //static string host = "http://dev.cryptolions.io:18888";
+        static string host = "http://api.eosnewyork.io";
         static TableAPI tableAPI = new TableAPI(host);
         static ChainAPI chainAPI = new ChainAPI(host);
         static HistoryAPI historyAPI = new HistoryAPI(host);
@@ -58,13 +61,13 @@ namespace EOSLibConsole
         public static void TestTransaction()
         {
             
-            string _accountName = "yatendra1", _permissionName = "active", _code = "eosio.token", _action = "transfer", _memo = "";
+            string _accountName = "yatendra1", _accountNameTo = "yatendra1234",_permissionName = "active", _code = "eosio.token", _action = "transfer", _memo = "";
             //prepare arguments to be passed to action
-            TransferArgs _args = new TransferArgs(){ from = _accountName, to = _accountName, quantity = "1.0000 EOS", memo = _memo };
+            TransferArgs _args = new TransferArgs(){ from = _accountName, to = _accountNameTo, quantity = "1.0000 EOS", memo = _memo };
             //BuyRamArgs _args = new BuyRamArgs(){ payer = _accountName, receiver = _accountName, quant = "0.001 EOS" };
             
             //prepare action object
-            Action action = new ActionUtility(host).GetActionObject(_accountName, _action, _permissionName, _code, _args);
+            Action action = new ActionUtility(host).GetActionObject(_action, _accountName, _permissionName, _code, _args);
             
             List<string> privateKeysInWIF = new List<string> { privateKeyWIF };
 
@@ -81,16 +84,46 @@ namespace EOSLibConsole
         }
         public static void GetBlock()
         {
-            string blockNumber = "100";
+            string blockNumber = "0107b7ae3c9845ecdbdb66afb8e2be2af3d515e0c01e8082c0cb17127610af49";
             var block = chainAPI.GetBlock(blockNumber);
             logger.Info("For block num {0} recieved block {1}", blockNumber, JsonConvert.SerializeObject(block));
         }
+        public static void GetTableRows()
+        {
+            string code = "eosio", scope = "eosio", table = "global", json = "true";
+            int lowerBound = 0, upperBound = -1, limit = 10;
+            var tableRows = chainAPI.GetTableRows(scope, code, table, json, lowerBound, upperBound, limit);
+            logger.Info("Recieved rows {0}", JsonConvert.SerializeObject(tableRows));
+        }
+
         public static void GetActions()
         {
-            string accountName = "eosio";
-            var actions = historyAPI.GetActions(-1, 100, accountName);
-            logger.Info("For account {0} recieved actions {1}", accountName, JsonConvert.SerializeObject(actions));
+            string accountName = "eosnewyorkio";
+            var actions = historyAPI.GetActions(-1, -10, accountName);
+            //logger.Info("For account {0} recieved actions {1}", accountName, JsonConvert.SerializeObject(actions));
+
+            // List all actions
+            foreach (var action in actions.actions)
+            {
+                string singleLineData = Regex.Replace(action.action_trace.act.data.ToString(), @"\t|\n|\r", "");
+                Console.WriteLine(string.Format("# {0}\t{1}\t{2} => {3}\t{4}", action.account_action_seq, action.block_time_datetime, action.action_trace.act.account+"::"+ action.action_trace.act.name, action.action_trace.receipt.receiver, singleLineData));
+            }
+
+            Console.WriteLine("----------");
+
+            //List specific actions
+            var res = actions.actions.Where(pr => pr.action_trace.act.name == "transfer");
+            foreach (var action in res)
+            {
+                string singleLineData = Regex.Replace(action.action_trace.act.data.ToString(), @"\t|\n|\r", "");
+
+                if (action.action_trace.act.data.from == "eosio.vpay" || action.action_trace.act.data.from == "eosio.bpay")
+                    Console.WriteLine(string.Format("# {0}\t{1}\t{2} => {3}\t{4}", action.account_action_seq, action.block_time_datetime, action.action_trace.act.account + "::" + action.action_trace.act.name, action.action_trace.receipt.receiver, singleLineData));
+            }
+
+
         }
+
         public static void GetAbi()
         {
             string accountName = "eosio";
